@@ -1,0 +1,194 @@
+# =============================================================================
+# Unity GitIgnore — strict version
+# Keeps the repo small and safe. Only source files, assets, and settings
+# are tracked. Everything generated, cached, or binary-heavy is excluded.
+# =============================================================================
+
+
+# =============================================================================
+# UNITY GENERATED — never commit these, they are rebuilt by Unity automatically
+# =============================================================================
+
+# Main generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Build output
+[Bb]uild/
+[Bb]uilds/
+[Bb]uild[Ss]ettings*/
+
+# Asset import cache (large, fully regenerated on import)
+Assets/AssetStoreTools*
+
+# Unity cache & crash files
+sysinfo.txt
+*.stackdump
+crashlytics-build.properties
+
+
+# =============================================================================
+# UNITY EDITOR / IDE FILES — machine-specific, not shared
+# =============================================================================
+
+# Visual Studio / Rider solution files (Unity regenerates these)
+*.csproj
+*.sln
+*.unityproj
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Unity Editor-specific user preferences (screen layout, shortcuts, etc.)
+UserSettings/
+
+
+# =============================================================================
+# LARGE / BINARY ASSET FILES — THE MAIN CAUSE OF GIT BLOAT
+# Commit the source file instead (e.g. .blend, .psd, .fbx source)
+# Unity will regenerate the import artifacts.
+# =============================================================================
+
+# Compiled audio (large)
+*.wav
+*.mp3
+*.ogg
+*.aiff
+*.aif
+*.flac
+*.m4a
+
+# Video files (very large — store externally if needed)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Raw / large texture formats (keep only .png, .jpg for lightweight game textures)
+*.psd
+*.tif
+*.tiff
+*.exr
+*.hdr
+*.tga
+
+# 3D model & source files (can be 10–100MB+ each — use Git LFS if you need them in git)
+*.blend
+*.blend1
+*.max
+*.ma
+*.mb
+*.ztl
+*.zpr
+*.glb
+*.gltf
+*.fbx
+*.obj
+*.dae
+
+# Precompiled / binary shader caches
+ShaderCache/
+*.shadercache
+
+# Lightmap bake data (very large, fully rebakeable)
+Assets/*/LightingData.asset
+Assets/[Ll]ightmap*/
+LightingData/
+
+# NavMesh bake data (rebakeable)
+Assets/*/NavMesh*.asset
+
+
+# =============================================================================
+# SENSITIVE / PRIVATE FILES — never commit secrets
+# =============================================================================
+
+*.env
+*.env.local
+secrets.json
+credentials.json
+ServiceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+
+# Unity Cloud / Vivox / relay config that may hold API keys
+Assets/Plugins/Android/res/values/strings.xml
+
+
+# =============================================================================
+# IDE & LOCAL TOOL FILES — machine-specific, not shared
+# =============================================================================
+
+# Cursor AI editor workspace data
+.cursor/
+
+# MCP (Model Context Protocol) server config — local development only
+.mcp.json
+
+# VSCode workspace settings (optional: remove this line if your team shares settings)
+.vscode/
+
+
+# =============================================================================
+# OS JUNK — created automatically by Windows / macOS / Linux
+# =============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+
+
+# =============================================================================
+# PACKAGE MANAGER — lock files and local package cache
+# =============================================================================
+
+# Local package cache (large, downloaded on demand)
+[Pp]ackages/[Cc]ache/
+
+# Package lock is auto-managed by Unity — keep packages.json but not the lock
+# (comment this out if your team prefers deterministic builds)
+# Packages/packages-lock.json
+
+
+# =============================================================================
+# GIT LFS PLACEHOLDER — add this if you ever enable Git LFS
+# Large binary assets (FBX, PNG, GLB, etc.) should go through LFS
+# Uncomment and run: git lfs install
+# =============================================================================
+
+# *.png filter=lfs diff=lfs merge=lfs -text
+# *.jpg filter=lfs diff=lfs merge=lfs -text
+# *.fbx filter=lfs diff=lfs merge=lfs -text
+# *.glb filter=lfs diff=lfs merge=lfs -text
+# *.wav filter=lfs diff=lfs merge=lfs -text
+
+
+# =============================================================================
+# EXPLICITLY TRACKED — files that SHOULD be in git despite being binary
+# (small enough to be safe, Unity requires them)
+# Nothing to list here; .meta files and small textures pass through by default.
+# =============================================================================
