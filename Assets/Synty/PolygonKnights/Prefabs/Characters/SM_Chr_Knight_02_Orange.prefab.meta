@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: c2ca8777898f1bf498d59dccc8178d47
+timeCreated: 1545086291
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 83694
+  packageName: POLYGON - Knights Pack - Art by Synty
+  packageVersion: 1.6.0
+  assetPath: Assets/Synty/PolygonKnights/Prefabs/Characters/SM_Chr_Knight_02_Orange.prefab
+  uploadId: 865078
