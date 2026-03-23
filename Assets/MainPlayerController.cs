@@ -70,19 +70,6 @@ public class MainPlayerController : NetworkBehaviour
             _aimSystem = gameObject.AddComponent<AimSystem>();
     }
 
-    void Start()
-    {
-        if (GetComponentInChildren<Renderer>() == null)
-        {
-            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "Player Visual";
-            sphere.transform.SetParent(transform, false);
-            var rend = sphere.GetComponent<Renderer>();
-            if (rend != null)
-                rend.material.color = new Color(0.55f, 0.27f, 0.07f, 1f);
-        }
-    }
-
     // ── NGO spawn ─────────────────────────────────────────────────
 
     public override void OnNetworkSpawn()
