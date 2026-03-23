@@ -83,16 +83,27 @@ public class FieldCameraController : MonoBehaviour
 
     private void HandleHostStarted()
     {
-        _currentYaw    = hostYaw;
+        _currentYaw     = hostYaw;
         _sessionStarted = true;
-        _target        = null;
+        _target         = null;
+
+        // For the host, NGO spawns the player synchronously inside StartHost(),
+        // so OnLocalPlayerSpawned fires BEFORE this handler runs and the guard
+        // (_sessionStarted == false) blocks it. Check GameManager now that we
+        // know we are in a session.
+        TryAttachToLocalPlayer();
     }
 
     private void HandleClientStarted()
     {
-        _currentYaw    = clientYaw;
+        _currentYaw     = clientYaw;
         _sessionStarted = true;
-        _target        = null;
+        _target         = null;
+
+        // For a client the player spawns asynchronously (after the connection
+        // handshake), so this call will find nothing yet — OnLocalPlayerSpawned
+        // will handle it once the spawn arrives.
+        TryAttachToLocalPlayer();
     }
 
     private void HandleSessionStopped()
@@ -109,6 +120,19 @@ public class FieldCameraController : MonoBehaviour
     }
 
     // ── Internal ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Snaps to the local player if GameManager already has a reference.
+    /// Called from HandleHostStarted/HandleClientStarted to handle the case
+    /// where the player spawned synchronously before those handlers ran.
+    /// </summary>
+    private void TryAttachToLocalPlayer()
+    {
+        var player = GameManager.Instance != null ? GameManager.Instance.LocalPlayer : null;
+        if (player == null) return;
+        _target = player.transform;
+        SnapToTarget();
+    }
 
     private void SnapToTarget()
     {
