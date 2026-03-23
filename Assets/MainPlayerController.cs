@@ -95,6 +95,16 @@ public class MainPlayerController : NetworkBehaviour
         // Aim line is only meaningful for the local owner.
         if (!IsOwner && _aimSystem != null)
             _aimSystem.enabled = false;
+
+        // Notify global systems (camera, GameManager) that the local player is ready.
+        if (IsOwner)
+            GameEvents.RaiseLocalPlayerSpawned(this);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner)
+            GameEvents.RaiseLocalPlayerDespawned(this);
     }
 
     // ── Per-frame ─────────────────────────────────────────────────

@@ -104,7 +104,7 @@ public class NetworkBootstrap : MonoBehaviour
         if (InvokeNetworkManagerBoolMethod("StartHost"))
         {
             status = "Host started";
-            SetupCamera(isHost: true);
+            GameEvents.RaiseHostStarted();
         }
         else
             status = "Failed to start host";
@@ -124,21 +124,10 @@ public class NetworkBootstrap : MonoBehaviour
         if (InvokeNetworkManagerBoolMethod("StartClient"))
         {
             status = "Client started";
-            SetupCamera(isHost: false);
+            GameEvents.RaiseClientStarted();
         }
         else
             status = "Failed to start client";
-    }
-
-    private void SetupCamera(bool isHost)
-    {
-        var cam = FindFirstObjectByType<FieldCameraController>();
-        if (cam == null) return;
-
-        if (isHost)
-            cam.SetupForHost();
-        else
-            cam.SetupForClient();
     }
 
     public void Shutdown()
@@ -154,6 +143,7 @@ public class NetworkBootstrap : MonoBehaviour
 
         InvokeNetworkManagerVoidMethod("Shutdown");
         status = "Shutdown";
+        GameEvents.RaiseSessionStopped();
     }
 
     public void RestartMatchAsHost()

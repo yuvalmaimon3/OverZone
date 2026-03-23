@@ -1,10 +1,25 @@
 using UnityEngine;
-using Unity.Netcode;
 
 /// <summary>
 /// Brawl Stars-style fixed-angle camera that follows the local (owned) player.
-/// The host camera looks from behind the host; the client camera looks from
-/// the opposite side so both players see their own character in the foreground.
+///
+/// PATTERN: Observer (subscriber side)
+///
+///   Previously, NetworkBootstrap called SetupForHost() / SetupForClient()
+///   directly (tight coupling). Now the camera listens to GameEvents and
+///   configures itself without knowing anything about NetworkBootstrap.
+///
+///   Previously, TryFindTarget() called FindObjectsByType every LateUpdate
+///   in a polling loop. Now it receives the player via GameEvents.OnLocalPlayerSpawned
+///   the instant the player spawns — zero per-frame searches.
+///
+/// EVENT FLOW
+///   User clicks Start Host → GameEvents.RaiseHostStarted()
+///     → OnHostStarted → camera stores hostYaw
+///   Local player spawns → GameEvents.RaiseLocalPlayerSpawned(player)
+///     → OnLocalPlayerSpawned → camera locks onto player, snaps instantly
+///   User clicks Shutdown → GameEvents.RaiseSessionStopped()
+///     → OnSessionStopped → camera clears target
 /// </summary>
 public class FieldCameraController : MonoBehaviour
 {
@@ -12,7 +27,7 @@ public class FieldCameraController : MonoBehaviour
     [SerializeField] private float followSmooth = 12f;
 
     [Header("Camera Angle (Brawl Stars Style)")]
-    [Tooltip("Height and Z-distance from player. X stays 0 for centered look.")]
+    [Tooltip("Height and Z-distance from player. X stays 0 for centred look.")]
     [SerializeField] private Vector3 offset = new Vector3(0f, 8f, -11f);
     [Tooltip("Down-tilt in degrees. 55 gives a Brawl-Stars-like isometric feel.")]
     [SerializeField] private float pitch = 55f;
@@ -23,45 +38,39 @@ public class FieldCameraController : MonoBehaviour
     [Tooltip("Yaw for the client player (180 = camera behind, looking toward -Z).")]
     [SerializeField] public float clientYaw = 180f;
 
-    // ── runtime state ───────────────────────────────────────────────────────
+    // ── Runtime state ─────────────────────────────────────────────
+
     private Transform _target;
-    private float _currentYaw;
-    private bool _setupCalled;
+    private float     _currentYaw;
+    private bool      _sessionStarted;
 
-    // ── public API called by NetworkBootstrap ───────────────────────────────
+    // ── Unity lifecycle ───────────────────────────────────────────
 
-    /// <summary>Call this right after Start Host is confirmed.</summary>
-    public void SetupForHost()
+    void OnEnable()
     {
-        _currentYaw = hostYaw;
-        _setupCalled = true;
-        _target = null;          // re-search so we pick up the spawned NetworkPlayer
+        GameEvents.OnHostStarted        += HandleHostStarted;
+        GameEvents.OnClientStarted      += HandleClientStarted;
+        GameEvents.OnSessionStopped     += HandleSessionStopped;
+        GameEvents.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
     }
 
-    /// <summary>Call this right after Start Client is confirmed.</summary>
-    public void SetupForClient()
+    void OnDisable()
     {
-        _currentYaw = clientYaw;
-        _setupCalled = true;
-        _target = null;
+        GameEvents.OnHostStarted        -= HandleHostStarted;
+        GameEvents.OnClientStarted      -= HandleClientStarted;
+        GameEvents.OnSessionStopped     -= HandleSessionStopped;
+        GameEvents.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
     }
-
-    // ── Unity callbacks ─────────────────────────────────────────────────────
 
     void LateUpdate()
     {
-        // Keep searching for the owned NetworkPlayer until one appears.
-        if (_target == null && _setupCalled)
-            TryFindTarget();
+        if (_target == null) return;
 
-        if (_target == null)
-            return;
+        Quaternion orbit      = Quaternion.Euler(pitch, _currentYaw, 0f);
+        Vector3    desiredPos = _target.position + orbit * offset;
 
-        Quaternion orbit = Quaternion.Euler(pitch, _currentYaw, 0f);
-        Vector3 desiredPos = _target.position + orbit * offset;
-
-        transform.position = Vector3.Lerp(transform.position, desiredPos,
-            Time.deltaTime * followSmooth);
+        transform.position = Vector3.Lerp(
+            transform.position, desiredPos, Time.deltaTime * followSmooth);
 
         Vector3 lookAt = _target.position + Vector3.up * 1.0f;
         transform.rotation = Quaternion.Slerp(
@@ -70,23 +79,37 @@ public class FieldCameraController : MonoBehaviour
             Time.deltaTime * followSmooth);
     }
 
-    // ── helpers ─────────────────────────────────────────────────────────────
+    // ── GameEvents handlers ───────────────────────────────────────
 
-    private void TryFindTarget()
+    private void HandleHostStarted()
     {
-        var players = FindObjectsByType<MainPlayerController>(FindObjectsSortMode.None);
-        foreach (var p in players)
-        {
-            if (p.IsOwner)
-            {
-                _target = p.transform;
-                SnapToTarget();
-                return;
-            }
-        }
+        _currentYaw    = hostYaw;
+        _sessionStarted = true;
+        _target        = null;
     }
 
-    /// <summary>Instantly place the camera so there is no slide-in at spawn.</summary>
+    private void HandleClientStarted()
+    {
+        _currentYaw    = clientYaw;
+        _sessionStarted = true;
+        _target        = null;
+    }
+
+    private void HandleSessionStopped()
+    {
+        _sessionStarted = false;
+        _target        = null;
+    }
+
+    private void HandleLocalPlayerSpawned(MainPlayerController player)
+    {
+        if (!_sessionStarted) return;
+        _target = player.transform;
+        SnapToTarget();
+    }
+
+    // ── Internal ──────────────────────────────────────────────────
+
     private void SnapToTarget()
     {
         Quaternion orbit = Quaternion.Euler(pitch, _currentYaw, 0f);

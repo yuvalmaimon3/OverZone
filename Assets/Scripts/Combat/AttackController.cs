@@ -48,8 +48,11 @@ public class AttackController : NetworkBehaviour
     private const float MaxCharge = 100f;
 
     // References to the attack behavior components (created automatically in Awake)
-    private MeleeAttack _meleeAttack;
+    private MeleeAttack      _meleeAttack;
     private ProjectileAttack _projectileAttack;
+
+    // Cached once in Awake — avoids GetComponentInChildren every time an attack fires.
+    private Animator _animator;
 
     // ── Public read-only state (used by UI) ────────────────────────────────
 
@@ -67,9 +70,12 @@ public class AttackController : NetworkBehaviour
     void Awake()
     {
         // Auto-attach attack behaviors if not already present on this GameObject.
-        // This means you don't have to manually add these components in the editor.
         _meleeAttack      = GetComponent<MeleeAttack>()      ?? gameObject.AddComponent<MeleeAttack>();
         _projectileAttack = GetComponent<ProjectileAttack>() ?? gameObject.AddComponent<ProjectileAttack>();
+
+        // Cache the Animator once. TriggerAnimation() is called on every attack
+        // so GetComponentInChildren every call would waste CPU.
+        _animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
@@ -89,9 +95,11 @@ public class AttackController : NetworkBehaviour
 
     private void HandleInput()
     {
-        // Left Mouse Button → normal attack
-        if (Input.GetMouseButtonDown(0))
-            TryNormalAttack();
+        // NOTE: LMB (Left Mouse Button) is intentionally NOT handled here.
+        // MainPlayerController owns LMB via the AimSystem:
+        //   hold LMB = show aim line, release LMB = fire NetworkProjectile via ServerRpc.
+        // Handling LMB here as well would fire two different projectile systems at once
+        // (a local non-networked Projectile AND a server-authoritative NetworkProjectile).
 
         // Q key OR Right Mouse Button → ultimate attack
         if (Input.GetKeyDown(KeyCode.Q) || Input.GetMouseButtonDown(1))
@@ -230,11 +238,9 @@ public class AttackController : NetworkBehaviour
     /// </summary>
     private void TriggerAnimation(string triggerName)
     {
-        if (string.IsNullOrEmpty(triggerName))
+        if (string.IsNullOrEmpty(triggerName) || _animator == null)
             return;
 
-        var animator = GetComponentInChildren<Animator>();
-        if (animator != null)
-            animator.SetTrigger(triggerName);
+        _animator.SetTrigger(triggerName);
     }
 }
