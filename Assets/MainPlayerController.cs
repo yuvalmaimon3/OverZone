@@ -41,7 +41,8 @@ public class MainPlayerController : NetworkBehaviour
     [Tooltip("How far in front of the player the projectile spawns (units).")]
     [SerializeField] private float fireSpawnOffset = 1.2f;
 
-    private float _nextFireTime;
+    private float     _nextFireTime;
+    private AimSystem _aimSystem;
 
     // ── Server-authoritative position ─────────────────────────────
 
@@ -62,6 +63,11 @@ public class MainPlayerController : NetworkBehaviour
     void Awake()
     {
         _rb = GetComponent<Rigidbody>();
+
+        // Auto-add AimSystem if not already on this GameObject.
+        _aimSystem = GetComponent<AimSystem>();
+        if (_aimSystem == null)
+            _aimSystem = gameObject.AddComponent<AimSystem>();
     }
 
     void Start()
@@ -85,6 +91,10 @@ public class MainPlayerController : NetworkBehaviour
         // Server needs dynamic physics for all players.
         bool spectatingClient = !IsOwner && !IsServer;
         _rb.isKinematic = spectatingClient;
+
+        // Aim line is only meaningful for the local owner.
+        if (!IsOwner && _aimSystem != null)
+            _aimSystem.enabled = false;
     }
 
     // ── Per-frame ─────────────────────────────────────────────────
@@ -176,28 +186,54 @@ public class MainPlayerController : NetworkBehaviour
 
     private void HandleFireInput()
     {
-        bool pressed = Input.GetKeyDown(KeyCode.Space)
-                    || Input.GetMouseButtonDown(0);
-
-        if (!pressed) return;
-
-        if (Time.time < _nextFireTime)
+        // ── LMB: hold to aim, release to fire ─────────────────────
+        if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log($"[Attack] On cooldown. {(_nextFireTime - Time.time):F2}s remaining.");
-            return;
+            _aimSystem.StartAim();
         }
 
-        _nextFireTime = Time.time + fireCooldown;
-        Debug.Log("[Attack] Sending FireServerRpc...");
-        FireServerRpc();
+        if (Input.GetMouseButtonUp(0))
+        {
+            Vector3 aimDir = _aimSystem.AimDirection;
+            _aimSystem.StopAim();
+
+            if (Time.time < _nextFireTime)
+            {
+                Debug.Log($"[Attack] On cooldown. {(_nextFireTime - Time.time):F2}s remaining.");
+                return;
+            }
+
+            _nextFireTime = Time.time + fireCooldown;
+            Debug.Log("[Attack] Sending FireServerRpc (aimed direction)...");
+            FireServerRpc(aimDir);
+        }
+
+        // ── Space: quick-fire in the current facing direction (no aim line) ──
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (Time.time < _nextFireTime)
+            {
+                Debug.Log($"[Attack] On cooldown. {(_nextFireTime - Time.time):F2}s remaining.");
+                return;
+            }
+
+            Vector3 quickDir = transform.forward;
+            quickDir.y = 0f;
+            if (quickDir.sqrMagnitude < 0.001f) quickDir = Vector3.forward;
+            quickDir.Normalize();
+
+            _nextFireTime = Time.time + fireCooldown;
+            Debug.Log("[Attack] Sending FireServerRpc (quick-fire direction)...");
+            FireServerRpc(quickDir);
+        }
     }
 
     /// <summary>
-    /// Runs on the server. Uses the server's authoritative transform.forward
-    /// as the fire direction, then spawns and initialises the projectile.
+    /// Runs on the server. Receives the aimed direction from the owner client,
+    /// then spawns and initialises the projectile.
     /// </summary>
     [ServerRpc]
-    private void FireServerRpc()
+    private void FireServerRpc(Vector3 direction)
     {
         if (_projectilePrefab == null)
         {
@@ -206,19 +242,18 @@ public class MainPlayerController : NetworkBehaviour
             return;
         }
 
-        // Direction: server's current facing, projected to XZ.
-        Vector3 dir = transform.forward;
-        dir.y = 0f;
-        if (dir.sqrMagnitude < 0.001f) dir = Vector3.forward;
-        dir.Normalize();
+        // Validate direction.
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.001f) direction = Vector3.forward;
+        direction.Normalize();
 
         // Spawn position: in front of the player at the player's centre height.
-        Vector3 spawnPos = transform.position + dir * fireSpawnOffset;
+        Vector3 spawnPos = transform.position + direction * fireSpawnOffset;
         float   spawnY   = transform.position.y;
 
-        Debug.Log($"[Attack] Server spawning projectile at {spawnPos}, dir={dir}");
+        Debug.Log($"[Attack] Server spawning projectile at {spawnPos}, dir={direction}");
 
-        var go     = Instantiate(_projectilePrefab, spawnPos, Quaternion.LookRotation(dir));
+        var go     = Instantiate(_projectilePrefab, spawnPos, Quaternion.LookRotation(direction));
         var netObj = go.GetComponent<NetworkObject>();
         if (netObj == null)
         {
@@ -228,6 +263,6 @@ public class MainPlayerController : NetworkBehaviour
         }
 
         netObj.Spawn(destroyWithScene: true);
-        go.GetComponent<NetworkProjectile>().Initialize(dir, OwnerClientId, spawnY);
+        go.GetComponent<NetworkProjectile>().Initialize(direction, OwnerClientId, spawnY);
     }
 }
